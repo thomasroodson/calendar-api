@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Backend/">
+    <Project Path="src/Backend/ProjectCalendar.API/ProjectCalendar.API.csproj" Id="2196518a-381a-41b6-9d2b-4db9929dfd03" />
+    <Project Path="src/Backend/ProjectCalendar.Application/ProjectCalendar.Application.csproj" Id="e3a25e1d-7a2d-44d0-b56a-bf597f7bbf64" />
+    <Project Path="src/Backend/ProjectCalendar.Domain/ProjectCalendar.Domain.csproj" Id="dfae5215-174c-4743-ab03-532a721e3722" />
+    <Project Path="src/Backend/ProjectCalendar.Infrastructure/ProjectCalendar.Infrastructure.csproj" Id="4fb4b033-3e18-4f23-9417-7f44cb27282b" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/ProjectCalendar.Communication/ProjectCalendar.Communication.csproj" Id="da607691-0530-41c1-9e1f-421408e309bc" />
+    <Project Path="src/Shared/ProjectCalendar.Exceptions/ProjectCalendar.Exceptions.csproj" Id="f0e4e0c6-bddc-406e-80fe-d211275a016e" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
