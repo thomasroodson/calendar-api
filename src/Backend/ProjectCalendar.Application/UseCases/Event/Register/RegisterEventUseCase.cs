@@ -23,7 +23,7 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
             _mapper = mapper;
         }
 
-        public async Task<ResponseRegisterEventJson> Execute(RequestRegisterEventJson request)
+        public async Task<ResponseEventJson> Execute(RequestRegisterEventJson request)
         {
             await Validate(request);
 
@@ -37,7 +37,7 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
 
             var createdEvent = await _repository.CreateAsync(eventEntity);
 
-            return _mapper.Map<ResponseRegisterEventJson>(createdEvent);
+            return _mapper.Map<ResponseEventJson>(createdEvent);
         }
 
         private async Task Validate(RequestRegisterEventJson request)

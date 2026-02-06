@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using ProjectCalendar.Application.UseCases.Event.GetAll;
 using ProjectCalendar.Application.UseCases.Event.Register;
 using System.Reflection;
 
@@ -14,6 +15,7 @@ namespace ProjectCalendar.Application
 
             // UseCases
             services.AddScoped<IRegisterEventUseCase, RegisterEventUseCase>();
+            services.AddScoped<IGetAllEventUseCase, GetAllEventUseCase>();
 
             return services;
         }

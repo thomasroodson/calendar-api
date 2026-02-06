@@ -5,6 +5,6 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
 {
     public interface IRegisterEventUseCase
     {
-        Task<ResponseRegisterEventJson> Execute(RequestRegisterEventJson request);
+        Task<ResponseEventJson> Execute(RequestRegisterEventJson request);
     }
 }

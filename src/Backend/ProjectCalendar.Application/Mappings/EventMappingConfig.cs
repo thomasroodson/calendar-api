@@ -8,7 +8,7 @@ namespace ProjectCalendar.Application.Mappings
     {
         public void Register(TypeAdapterConfig config) 
         {
-            config.NewConfig<Event, ResponseRegisterEventJson>()
+            config.NewConfig<Event, ResponseEventJson>()
             .Map(dest => dest.Id, src => src.Id)
             .Map(dest => dest.Title, src => src.Title)
             .Map(dest => dest.Description, src => src.Description)

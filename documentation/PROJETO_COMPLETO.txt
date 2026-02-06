@@ -1,0 +1,1168 @@
+﻿
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\Controllers\EventController.cs
+================================================================================
+using Microsoft.AspNetCore.Mvc;
+using ProjectCalendar.Application.UseCases.Event.Register;
+using ProjectCalendar.Communication.Requests;
+using ProjectCalendar.Communication.Responses;
+
+namespace ProjectCalendar.API.Controllers
+{
+    [Route("[controller]")]
+    [ApiController]
+    public class EventController : ControllerBase
+    {
+        private readonly IRegisterEventUseCase _registerEventUseCase;
+
+        public EventController(IRegisterEventUseCase registerEventUseCase)
+        {
+            _registerEventUseCase = registerEventUseCase;
+        }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(ResponseRegisterEventJson), StatusCodes.Status201Created)]
+        public async Task<IActionResult> Register([FromBody] RequestRegisterEventJson request)
+        {
+            var result = await _registerEventUseCase.Execute(request);
+
+            return Created(string.Empty, result);
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\Filters\ExceptionFilter.cs
+================================================================================
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using ProjectCalendar.Communication.Responses;
+using ProjectCalendar.Exceptions;
+using ProjectCalendar.Exceptions.ExceptionsBase;
+using System.Net;
+
+namespace ProjectCalendar.API.Filters
+{
+    public class ExceptionFilter : IExceptionFilter
+    {
+
+        public void OnException(ExceptionContext context)
+        {
+            if (context.Exception is ProjectCalendarException)
+                HandleProjectException(context);
+            else
+                ThrowUnknowException(context);
+
+        }
+
+        private static void HandleProjectException(ExceptionContext context)
+        {
+            if(context.Exception is ErrorOnValidationException exception)
+            {
+                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                context.Result = new BadRequestObjectResult(new ResponseErrorJson(exception.ErrorMessages));
+            }
+        }
+
+        private static void ThrowUnknowException(ExceptionContext context)
+        {
+            context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            context.Result = new ObjectResult(new ResponseErrorJson(ResourceMessagesException.UNKNOW_ERROR));
+        }
+
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\Middleware\CultureMiddleware.cs
+================================================================================
+using System.Globalization;
+
+namespace ProjectCalendar.API.Middleware
+{
+    public class CultureMiddleware
+    {
+        private readonly RequestDelegate _next;
+        
+        public CultureMiddleware(RequestDelegate next) 
+        {
+            _next = next;
+        }
+        
+        public async Task Invoke(HttpContext context)
+        {
+            var supportedLanguages = CultureInfo.GetCultures(CultureTypes.AllCultures);
+
+            var requestedCulture = context.Request.Headers.AcceptLanguage.FirstOrDefault();
+
+            var cultureInfo = new CultureInfo("en");
+
+            if (!string.IsNullOrWhiteSpace(requestedCulture) 
+                && supportedLanguages.Any(c => c.Name.Equals(requestedCulture)))
+            {
+                cultureInfo = new CultureInfo(requestedCulture);
+            }
+
+            CultureInfo.CurrentCulture = cultureInfo;
+            CultureInfo.CurrentUICulture = cultureInfo;
+
+            await _next(context);
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\Properties\launchSettings.json
+================================================================================
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5294",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:7023;http://localhost:5294",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\appsettings.Development.json
+================================================================================
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\appsettings.json
+================================================================================
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "MongoDbSettings": {
+    "ConnectionString": "mongodb://localhost:27017",
+    "DatabaseName": "calendar_db"
+  }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\Program.cs
+================================================================================
+using Mapster;
+using MapsterMapper;
+using MongoDB.Driver;
+using ProjectCalendar.API.Filters;
+using ProjectCalendar.API.Middleware;
+using ProjectCalendar.Application;
+using ProjectCalendar.Infrastructure;
+using ProjectCalendar.Infrastructure.DataAccess;
+using System.Reflection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+MongoDbConfiguration.Configure();
+
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{
+    var connectionString = builder.Configuration["MongoDbSettings:ConnectionString"];
+    return new MongoClient(connectionString);
+});
+
+builder.Services.AddScoped<MongoDbContext>();
+
+builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddApplication();
+
+// Registrar Mapster
+var config = TypeAdapterConfig.GlobalSettings;
+config.Scan(Assembly.GetExecutingAssembly());
+config.Scan(Assembly.Load("ProjectCalendar.Application"));
+
+builder.Services.AddSingleton(config);
+builder.Services.AddScoped<IMapper, ServiceMapper>();
+
+// Registrar Controllers com ExceptionFilter
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(typeof(ExceptionFilter));
+});
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "Calendar API",
+        Version = "v1",
+        Description = "API para gerenciamento de eventos de calendÃ¡rio"
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.DocumentTitle = "Calendar API - V1";
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Calendar API - V1");
+    });
+}
+
+app.UseMiddleware<CultureMiddleware>();
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.API\ProjectCalendar.API.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\ProjectCalendar.Communication\ProjectCalendar.Communication.csproj" />
+    <ProjectReference Include="..\..\Shared\ProjectCalendar.Exceptions\ProjectCalendar.Exceptions.csproj" />
+    <ProjectReference Include="..\ProjectCalendar.Application\ProjectCalendar.Application.csproj" />
+    <ProjectReference Include="..\ProjectCalendar.Infrastructure\ProjectCalendar.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\Mappings\EventMappingConfig.cs
+================================================================================
+using Mapster;
+using ProjectCalendar.Communication.Responses;
+using ProjectCalendar.Domain.Entities;
+
+namespace ProjectCalendar.Application.Mappings
+{
+    public class EventMappingConfig : IRegister
+    {
+        public void Register(TypeAdapterConfig config) 
+        {
+            config.NewConfig<Event, ResponseRegisterEventJson>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.Title, src => src.Title)
+            .Map(dest => dest.Description, src => src.Description)
+            .Map(dest => dest.StartDate, src => src.DateRange.StartDate)
+            .Map(dest => dest.EndDate, src => src.DateRange.EndDate)
+            .Map(dest => dest.Color, src => src.Color.Value)
+            .Map(dest => dest.CreatedAt, src => src.CreatedAt)
+            .Map(dest => dest.UpdatedAt, src => src.UpdatedAt);
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\UseCases\Event\Register\IRegisterEventUseCase.cs
+================================================================================
+using ProjectCalendar.Communication.Requests;
+using ProjectCalendar.Communication.Responses;
+
+namespace ProjectCalendar.Application.UseCases.Event.Register
+{
+    public interface IRegisterEventUseCase
+    {
+        Task<ResponseRegisterEventJson> Execute(RequestRegisterEventJson request);
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\UseCases\Event\Register\RegisterEventUseCase.cs
+================================================================================
+using FluentValidation;
+using MapsterMapper;
+using ProjectCalendar.Communication.Requests;
+using ProjectCalendar.Communication.Responses;
+using ProjectCalendar.Domain.Interfaces;
+using ProjectCalendar.Exceptions.ExceptionsBase;
+
+namespace ProjectCalendar.Application.UseCases.Event.Register
+{
+    public class RegisterEventUseCase : IRegisterEventUseCase
+    {
+        private readonly IEventRepository _repository;
+        private readonly IValidator<RequestRegisterEventJson> _validator;
+        private readonly IMapper _mapper;
+
+        public RegisterEventUseCase(
+            IEventRepository repository,
+            IValidator<RequestRegisterEventJson> validator,
+            IMapper mapper)
+        {
+            _repository = repository;
+            _validator = validator;
+            _mapper = mapper;
+        }
+
+        public async Task<ResponseRegisterEventJson> Execute(RequestRegisterEventJson request)
+        {
+            await Validate(request);
+
+            var eventEntity = new Domain.Entities.Event(
+                title: request.Title,
+                startDate: request.StartDate,
+                endDate: request.EndDate,
+                color: request.Color,
+                description: request.Description
+            );
+
+            var createdEvent = await _repository.CreateAsync(eventEntity);
+
+            return _mapper.Map<ResponseRegisterEventJson>(createdEvent);
+        }
+
+        private async Task Validate(RequestRegisterEventJson request)
+        {
+            var result = await _validator.ValidateAsync(request);
+
+            if (!result.IsValid)
+            {
+                var errorMessages = result.Errors.Select(e => e.ErrorMessage).ToList();
+                throw new ErrorOnValidationException(errorMessages);
+            }
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\UseCases\Event\Register\RegisterEventValidator.cs
+================================================================================
+using FluentValidation;
+using ProjectCalendar.Communication.Requests;
+using ProjectCalendar.Exceptions;
+
+namespace ProjectCalendar.Application.UseCases.Event.Register
+{
+    public class RegisterEventValidator : AbstractValidator<RequestRegisterEventJson>
+    {
+        public RegisterEventValidator() 
+        {
+            RuleFor(request => request.Title)
+            .NotEmpty()
+            .WithMessage(ResourceMessagesException.TITLE_EMPTY)
+            .MinimumLength(1)
+            .WithMessage(ResourceMessagesException.TITLE_MIN_LENGTH)
+            .MaximumLength(100)
+            .WithMessage(ResourceMessagesException.TITLE_MAX_LENGTH)
+            .Must(title => !string.IsNullOrWhiteSpace(title))
+            .WithMessage(ResourceMessagesException.TITLE_WHITESPACE);
+
+            RuleFor(request => request.Color)
+                .NotEmpty()
+                .WithMessage(ResourceMessagesException.COLOR_EMPTY)
+                .Matches(@"^#([A-Fa-f0-9]{6})$")
+                .WithMessage(ResourceMessagesException.COLOR_INVALID_FORMAT);
+
+            RuleFor(request => request.StartDate)
+                .NotEmpty()
+                .WithMessage(ResourceMessagesException.START_DATE_REQUIRED)
+                .LessThan(request => request.EndDate)
+                .WithMessage(ResourceMessagesException.START_DATE_BEFORE_END);
+
+            RuleFor(request => request.EndDate)
+                .NotEmpty()
+                .WithMessage(ResourceMessagesException.END_DATE_REQUIRED)
+                .GreaterThan(request => request.StartDate)
+                .WithMessage(ResourceMessagesException.END_DATE_AFTER_START);
+
+            RuleFor(request => request)
+                .Must(request => (request.EndDate - request.StartDate).TotalMinutes >= 1)
+                .WithMessage(ResourceMessagesException.DURATION_MINIMUM)
+                .When(request => request.EndDate > request.StartDate);
+
+            RuleFor(request => request.Description)
+                .MaximumLength(500)
+                .WithMessage(ResourceMessagesException.DESCRIPTION_MAX_LENGTH)
+                .When(request => request.Description != null);
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\DependencyInjectionExtension.cs
+================================================================================
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+using ProjectCalendar.Application.UseCases.Event.Register;
+using System.Reflection;
+
+namespace ProjectCalendar.Application
+{
+    public static class DependencyInjectionExtension
+    {
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            // FluentValidation
+            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+            // UseCases
+            services.AddScoped<IRegisterEventUseCase, RegisterEventUseCase>();
+
+            return services;
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Application\ProjectCalendar.Application.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Mapster" Version="7.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\ProjectCalendar.Communication\ProjectCalendar.Communication.csproj" />
+    <ProjectReference Include="..\..\Shared\ProjectCalendar.Exceptions\ProjectCalendar.Exceptions.csproj" />
+    <ProjectReference Include="..\ProjectCalendar.Domain\ProjectCalendar.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Domain\Entities\Event.cs
+================================================================================
+using ProjectCalendar.Domain.ValueObjects;
+
+namespace ProjectCalendar.Domain.Entities
+{
+    public class Event
+    {
+        public string? Id { get; private set; }
+        public string Title { get; private set; }
+        public string? Description { get; private set; }
+        public DateRange DateRange { get; private set; }
+        public EventColor Color { get; private set; }
+        public DateTime CreatedAt { get; private set; }
+        public DateTime UpdatedAt { get; private set; }
+
+        private Event()
+        {
+        }
+
+        public Event(string title, DateTime startDate, DateTime endDate, string color, string? description = null)
+        {
+            Id = null;
+            Title = title.Trim();
+            Description = description?.Trim();
+            DateRange = new DateRange(startDate, endDate);
+            Color = new EventColor(color);
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void UpdateTitle(string title)
+        {
+            Title = title.Trim();
+            UpdateTimestamp();
+        }
+
+        public void UpdateDescription(string? description)
+        {
+            Description = description?.Trim();
+            UpdateTimestamp();
+        }
+
+        public void UpdateDateRange(DateTime startDate, DateTime endDate)
+        {
+            DateRange = new DateRange(startDate, endDate);
+            UpdateTimestamp();
+        }
+
+        public void UpdateColor(string color)
+        {
+            Color = new EventColor(color);
+            UpdateTimestamp();
+        }
+
+        public void Move(DateTime newStartDate, DateTime newEndDate)
+        {
+            DateRange = new DateRange(newStartDate, newEndDate);
+            UpdateTimestamp();
+        }
+
+        private void UpdateTimestamp()
+        {
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+
+    }
+
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Domain\Interfaces\IEventRepository.cs
+================================================================================
+using ProjectCalendar.Domain.Entities;
+
+namespace ProjectCalendar.Domain.Interfaces
+{
+    public interface IEventRepository
+    {
+        Task<Event?> GetByIdAsync(string id);
+        Task<IEnumerable<Event>> GetAllAsync();
+        Task<IEnumerable<Event>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<Event> CreateAsync(Event @event);
+        Task<Event> UpdateAsync(Event @event);
+        Task<bool> DeleteAsync(string id);
+    }
+
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Domain\ValueObjects\DateRange.cs
+================================================================================
+namespace ProjectCalendar.Domain.ValueObjects
+{
+    public class DateRange
+    {
+        public DateTime StartDate { get; private set; }
+        public DateTime EndDate { get; private set; }
+
+        private DateRange()
+        {
+            // Construtor privado para o MongoDB
+        }
+
+        public DateRange(DateTime startDate, DateTime endDate)
+        {
+            if (endDate <= startDate)
+                throw new ArgumentException("End date must be after start date");
+
+            var duration = endDate - startDate;
+            if (duration.TotalMinutes < 1)
+                throw new ArgumentException("Event duration must be at least 1 minute");
+
+            StartDate = startDate.ToUniversalTime();
+            EndDate = endDate.ToUniversalTime();
+        }
+
+        public TimeSpan Duration => EndDate - StartDate;
+
+        public bool OverlapsWith(DateRange other)
+        {
+            return StartDate < other.EndDate && EndDate > other.StartDate;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is not DateRange other)
+                return false;
+
+            return StartDate == other.StartDate && EndDate == other.EndDate;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(StartDate, EndDate);
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Domain\ValueObjects\EventColor.cs
+================================================================================
+using System.Text.RegularExpressions;
+
+namespace ProjectCalendar.Domain.ValueObjects;
+
+public class EventColor
+{
+    private static readonly Regex HexColorRegex = new(@"^#([A-Fa-f0-9]{6})$", RegexOptions.Compiled);
+
+    public string Value { get; private set; }
+
+    private EventColor()
+    {
+        Value = string.Empty;
+        // Construtor privado para o MongoDB
+    }
+
+    public EventColor(string color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+            throw new ArgumentException("Color cannot be empty");
+
+        if (!HexColorRegex.IsMatch(color))
+            throw new ArgumentException("Color must be a valid hex color (e.g., #FF5733)");
+
+        Value = color.ToUpperInvariant();
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is not EventColor other)
+            return false;
+
+        return Value == other.Value;
+    }
+
+    public override int GetHashCode()
+    {
+        return Value.GetHashCode();
+    }
+
+    public override string ToString()
+    {
+        return Value;
+    }
+
+    public static implicit operator string(EventColor color)
+    {
+        return color.Value;
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Domain\ProjectCalendar.Domain.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Infrastructure\DataAccess\EventRepository.cs
+================================================================================
+using MongoDB.Driver;
+using ProjectCalendar.Domain.Entities;
+using ProjectCalendar.Domain.Interfaces;
+
+namespace ProjectCalendar.Infrastructure.DataAccess
+{
+    public class EventRepository : IEventRepository
+    {
+        private readonly IMongoCollection<Event> _collection;
+
+        public EventRepository(MongoDbContext context)
+        {
+            _collection = context.Events;
+        }
+
+        public async Task<Event> CreateAsync(Event @event)
+        {
+            await _collection.InsertOneAsync(@event);
+            return @event;
+        }
+
+        public async Task<Event?> GetByIdAsync(string id)
+        {
+            return await _collection.Find(e => e.Id == id).FirstOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<Event>> GetAllAsync()
+        {
+            return await _collection.Find(_ => true).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Event>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            var filter = Builders<Event>.Filter.And(
+                Builders<Event>.Filter.Gte(e => e.DateRange.StartDate, startDate),
+                Builders<Event>.Filter.Lte(e => e.DateRange.EndDate, endDate)
+            );
+
+            return await _collection.Find(filter).ToListAsync();
+        }
+
+        public async Task<Event> UpdateAsync(Event @event)
+        {
+            await _collection.ReplaceOneAsync(e => e.Id == @event.Id, @event);
+            return @event;
+        }
+
+        public async Task<bool> DeleteAsync(string id)
+        {
+            var result = await _collection.DeleteOneAsync(e => e.Id == id);
+            return result.DeletedCount > 0;
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Infrastructure\DataAccess\MongoDbConfiguration.cs
+================================================================================
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.IdGenerators;
+using MongoDB.Bson.Serialization.Serializers;
+using ProjectCalendar.Domain.Entities;
+using ProjectCalendar.Domain.ValueObjects;
+
+namespace ProjectCalendar.Infrastructure.DataAccess
+{
+    public static class MongoDbConfiguration
+    {
+        private static bool _isConfigured = false;
+
+        public static void Configure()
+        {
+            if (_isConfigured)
+                return;
+
+            BsonClassMap.RegisterClassMap<Event>(cm =>
+            {
+                cm.AutoMap();
+                cm.MapIdProperty(x => x.Id)
+                    .SetIdGenerator(StringObjectIdGenerator.Instance)
+                    .SetSerializer(new StringSerializer(BsonType.ObjectId));
+                cm.SetIgnoreExtraElements(true);
+            });
+
+            BsonClassMap.RegisterClassMap<DateRange>(cm =>
+            {
+                cm.AutoMap();
+                cm.MapProperty(x => x.StartDate);
+                cm.MapProperty(x => x.EndDate);
+                cm.SetIgnoreExtraElements(true);
+            });
+
+            BsonClassMap.RegisterClassMap<EventColor>(cm =>
+            {
+                cm.AutoMap();
+                cm.MapProperty(x => x.Value);
+                cm.SetIgnoreExtraElements(true);
+            });
+
+            _isConfigured = true;
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Infrastructure\DataAccess\MongoDbContext.cs
+================================================================================
+using Microsoft.Extensions.Configuration;
+using MongoDB.Driver;
+using ProjectCalendar.Domain.Entities;
+
+namespace ProjectCalendar.Infrastructure.DataAccess
+{
+    public class MongoDbContext
+    {
+        private readonly IMongoDatabase _database;
+
+        public MongoDbContext(IMongoClient mongoClient, IConfiguration configuration)
+        {
+            var databaseName = configuration["MongoDbSettings:DatabaseName"] ?? "calendar_db";
+            _database = mongoClient.GetDatabase(databaseName);
+        }
+
+        public IMongoCollection<Event> Events => _database.GetCollection<Event>("events");
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Infrastructure\DependencyInjectionExtension.cs
+================================================================================
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
+using ProjectCalendar.Domain.Interfaces;
+using ProjectCalendar.Infrastructure.DataAccess;
+
+namespace ProjectCalendar.Infrastructure
+{
+    public static class DependencyInjectionExtension
+    {
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddScoped<IEventRepository, EventRepository>();
+
+            return services;
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Backend\ProjectCalendar.Infrastructure\ProjectCalendar.Infrastructure.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
+    <PackageReference Include="MongoDB.Driver" Version="3.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProjectCalendar.Domain\ProjectCalendar.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Communication\Requests\RequestRegisterEventJson.cs
+================================================================================
+using System.ComponentModel.DataAnnotations;
+
+namespace ProjectCalendar.Communication.Requests
+{
+    public class RequestRegisterEventJson
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Color { get; set; } = "#3B82F6";
+    }
+}
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Communication\Responses\ResponseErrorJson.cs
+================================================================================
+namespace ProjectCalendar.Communication.Responses
+{
+    public class ResponseErrorJson
+    {
+        public IList<string> Errors { get; set; }
+
+        public ResponseErrorJson(IList<string> errors) => Errors = errors;
+
+        public ResponseErrorJson(string errors) 
+        {
+            Errors =
+            [
+                errors
+            ];
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Communication\Responses\ResponseRegisterEventJson.cs
+================================================================================
+namespace ProjectCalendar.Communication.Responses
+{
+    public class ResponseRegisterEventJson
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Color { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Communication\ProjectCalendar.Communication.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Exceptions\ExceptionsBase\ErrorOnValidationException.cs
+================================================================================
+namespace ProjectCalendar.Exceptions.ExceptionsBase
+{
+    public class ErrorOnValidationException : ProjectCalendarException
+    {
+        public IList<string> ErrorMessages { get; set; }
+
+        public ErrorOnValidationException(IList<string> errorMessages)
+        {
+            ErrorMessages = errorMessages;
+        }
+    }
+}
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Exceptions\ExceptionsBase\ProjectCalendarException.cs
+================================================================================
+namespace ProjectCalendar.Exceptions.ExceptionsBase
+{
+    public class ProjectCalendarException : System.Exception
+    {
+    }
+}
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Exceptions\ProjectCalendar.Exceptions.csproj
+================================================================================
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Update="ResourceMessagesException.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ResourceMessagesException.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="ResourceMessagesException.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>ResourceMessagesException.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
+
+================================================================================
+ARQUIVO: src\Shared\ProjectCalendar.Exceptions\ResourceMessagesException.Designer.cs
+================================================================================
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     O código foi gerado por uma ferramenta.
+//     Versão de Tempo de Execução:4.0.30319.42000
+//
+//     As alterações ao arquivo poderão causar comportamento incorreto e serão perdidas se
+//     o código for gerado novamente.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+namespace ProjectCalendar.Exceptions {
+    using System;
+    
+    
+    /// <summary>
+    ///   Uma classe de recurso de tipo de alta segurança, para pesquisar cadeias de caracteres localizadas etc.
+    /// </summary>
+    // Essa classe foi gerada automaticamente pela classe StronglyTypedResourceBuilder
+    // através de uma ferramenta como ResGen ou Visual Studio.
+    // Para adicionar ou remover um associado, edite o arquivo .ResX e execute ResGen novamente
+    // com a opção /str, ou recrie o projeto do VS.
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+    public class ResourceMessagesException {
+        
+        private static global::System.Resources.ResourceManager resourceMan;
+        
+        private static global::System.Globalization.CultureInfo resourceCulture;
+        
+        [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+        internal ResourceMessagesException() {
+        }
+        
+        /// <summary>
+        ///   Retorna a instância de ResourceManager armazenada em cache usada por essa classe.
+        /// </summary>
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        public static global::System.Resources.ResourceManager ResourceManager {
+            get {
+                if (object.ReferenceEquals(resourceMan, null)) {
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("ProjectCalendar.Exceptions.ResourceMessagesException", typeof(ResourceMessagesException).Assembly);
+                    resourceMan = temp;
+                }
+                return resourceMan;
+            }
+        }
+        
+        /// <summary>
+        ///   Substitui a propriedade CurrentUICulture do thread atual para todas as
+        ///   pesquisas de recursos que usam essa classe de recurso de tipo de alta segurança.
+        /// </summary>
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        public static global::System.Globalization.CultureInfo Culture {
+            get {
+                return resourceCulture;
+            }
+            set {
+                resourceCulture = value;
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Color cannot be empty.
+        /// </summary>
+        public static string COLOR_EMPTY {
+            get {
+                return ResourceManager.GetString("COLOR_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Color must be a valid hex color (e.g., #FF5733).
+        /// </summary>
+        public static string COLOR_INVALID_FORMAT {
+            get {
+                return ResourceManager.GetString("COLOR_INVALID_FORMAT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Description cannot exceed 500 characters.
+        /// </summary>
+        public static string DESCRIPTION_MAX_LENGTH {
+            get {
+                return ResourceManager.GetString("DESCRIPTION_MAX_LENGTH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Event duration must be at least 1 minute.
+        /// </summary>
+        public static string DURATION_MINIMUM {
+            get {
+                return ResourceManager.GetString("DURATION_MINIMUM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a End date must be after start date.
+        /// </summary>
+        public static string END_DATE_AFTER_START {
+            get {
+                return ResourceManager.GetString("END_DATE_AFTER_START", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a End date is required.
+        /// </summary>
+        public static string END_DATE_REQUIRED {
+            get {
+                return ResourceManager.GetString("END_DATE_REQUIRED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Start date must be before end date.
+        /// </summary>
+        public static string START_DATE_BEFORE_END {
+            get {
+                return ResourceManager.GetString("START_DATE_BEFORE_END", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Start date is required.
+        /// </summary>
+        public static string START_DATE_REQUIRED {
+            get {
+                return ResourceManager.GetString("START_DATE_REQUIRED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Title cannot be empty.
+        /// </summary>
+        public static string TITLE_EMPTY {
+            get {
+                return ResourceManager.GetString("TITLE_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Title cannot exceed 100 characters.
+        /// </summary>
+        public static string TITLE_MAX_LENGTH {
+            get {
+                return ResourceManager.GetString("TITLE_MAX_LENGTH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Title must have at least 1 character.
+        /// </summary>
+        public static string TITLE_MIN_LENGTH {
+            get {
+                return ResourceManager.GetString("TITLE_MIN_LENGTH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Title cannot contain only whitespace.
+        /// </summary>
+        public static string TITLE_WHITESPACE {
+            get {
+                return ResourceManager.GetString("TITLE_WHITESPACE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a unknown error.
+        /// </summary>
+        public static string UNKNOW_ERROR {
+            get {
+                return ResourceManager.GetString("UNKNOW_ERROR", resourceCulture);
+            }
+        }
+    }
+}
