@@ -37,5 +37,12 @@ namespace ProjectCalendar.API.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        [ProducesResponseType<>]
+        public async Task<IActionResult> GetById(long id)
+        {
+
+        }
     }
 }

@@ -1,6 +1,4 @@
-﻿using FluentValidation;
-using MapsterMapper;
-using ProjectCalendar.Communication.Requests;
+﻿using MapsterMapper;
 using ProjectCalendar.Communication.Responses;
 using ProjectCalendar.Domain.Interfaces;
 
