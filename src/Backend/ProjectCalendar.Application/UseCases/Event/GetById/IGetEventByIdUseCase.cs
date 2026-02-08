@@ -2,7 +2,7 @@
 
 namespace ProjectCalendar.Application.UseCases.Event.Get
 {
-    public interface IGetByIdEventUseCase
+    public interface IGetEventByIdUseCase
     {
         Task<ResponseEventJson> Execute(string id);
     }

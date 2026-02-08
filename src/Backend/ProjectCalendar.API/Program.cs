@@ -65,6 +65,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<CultureMiddleware>();
 
+app.UseNotFoundHandler();
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

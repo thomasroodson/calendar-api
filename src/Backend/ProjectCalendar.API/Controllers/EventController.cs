@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ProjectCalendar.Application.UseCases.Event.Get;
 using ProjectCalendar.Application.UseCases.Event.GetAll;
 using ProjectCalendar.Application.UseCases.Event.Register;
 using ProjectCalendar.Communication.Requests;
@@ -12,8 +13,12 @@ namespace ProjectCalendar.API.Controllers
     {
         private readonly IRegisterEventUseCase _registerEventUseCase;
         private readonly IGetAllEventUseCase _getAllEventUseCase;
+        private readonly IGetEventByIdUseCase _getEventByIdUseCase;
 
-        public EventController(IRegisterEventUseCase registerEventUseCase, IGetAllEventUseCase getAllEventUseCase)
+        public EventController(IRegisterEventUseCase registerEventUseCase,
+            IGetAllEventUseCase getAllEventUseCase,
+            IGetEventByIdUseCase getEventByIdUseCase
+            )
         {
             _registerEventUseCase = registerEventUseCase;
             _getAllEventUseCase = getAllEventUseCase;
@@ -39,10 +44,12 @@ namespace ProjectCalendar.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType<>]
-        public async Task<IActionResult> GetById(long id)
+        [ProducesResponseType(typeof(ResponseEventJson), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetEventById(string id)
         {
+            var result = await _getEventByIdUseCase.Execute(id);
 
+            return Ok(result);
         }
     }
 }

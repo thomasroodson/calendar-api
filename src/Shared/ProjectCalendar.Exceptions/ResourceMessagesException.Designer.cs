@@ -115,6 +115,24 @@ namespace ProjectCalendar.Exceptions {
         }
         
         /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Event not found..
+        /// </summary>
+        public static string NOT_FOUND_EVENT {
+            get {
+                return ResourceManager.GetString("NOT_FOUND_EVENT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Route not found or invalid..
+        /// </summary>
+        public static string ROUTE_NOT_FOUND {
+            get {
+                return ResourceManager.GetString("ROUTE_NOT_FOUND", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Consulta uma cadeia de caracteres localizada semelhante a Start date must be before end date.
         /// </summary>
         public static string START_DATE_BEFORE_END {

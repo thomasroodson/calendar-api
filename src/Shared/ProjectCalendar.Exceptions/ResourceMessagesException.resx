@@ -135,6 +135,12 @@
   <data name="END_DATE_REQUIRED" xml:space="preserve">
     <value>End date is required</value>
   </data>
+  <data name="NOT_FOUND_EVENT" xml:space="preserve">
+    <value>Event not found.</value>
+  </data>
+  <data name="ROUTE_NOT_FOUND" xml:space="preserve">
+    <value>Route not found or invalid.</value>
+  </data>
   <data name="START_DATE_BEFORE_END" xml:space="preserve">
     <value>Start date must be before end date</value>
   </data>
