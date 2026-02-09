@@ -1,9 +1,10 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using ProjectCalendar.Application.UseCases.Event.Get;
+using ProjectCalendar.Application.UseCases.Event.GetById;
 using ProjectCalendar.Application.UseCases.Event.GetAll;
 using ProjectCalendar.Application.UseCases.Event.Register;
 using System.Reflection;
+using ProjectCalendar.Application.UseCases.Event.GetByDate;
 
 namespace ProjectCalendar.Application
 {
@@ -16,8 +17,9 @@ namespace ProjectCalendar.Application
 
             // UseCases
             services.AddScoped<IRegisterEventUseCase, RegisterEventUseCase>();
-            services.AddScoped<IGetAllEventUseCase, GetAllEventUseCase>();
+            services.AddScoped<IGetAllEventsUseCase, GetAllEventsUseCase>();
             services.AddScoped<IGetEventByIdUseCase, GetEventByIdUseCase>();
+            services.AddScoped<IGetEventsByDateUseCase, GetEventsByDateUseCase>();
 
 
             return services;

@@ -1,6 +1,6 @@
 ﻿using ProjectCalendar.Communication.Responses;
 
-namespace ProjectCalendar.Application.UseCases.Event.Get
+namespace ProjectCalendar.Application.UseCases.Event.GetById
 {
     public interface IGetEventByIdUseCase
     {

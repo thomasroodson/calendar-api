@@ -135,6 +135,15 @@
   <data name="END_DATE_REQUIRED" xml:space="preserve">
     <value>End date is required</value>
   </data>
+  <data name="ID_MIN_LENGTH" xml:space="preserve">
+    <value>Invalid ID size.</value>
+  </data>
+  <data name="INVALID_EVENT_DATE_RANGE" xml:space="preserve">
+    <value>The start date cannot be later than the end date.</value>
+  </data>
+  <data name="INVALID_EVENT_ID" xml:space="preserve">
+    <value>The event id format is invalid.</value>
+  </data>
   <data name="NOT_FOUND_EVENT" xml:space="preserve">
     <value>Event not found.</value>
   </data>

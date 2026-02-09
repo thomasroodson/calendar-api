@@ -6,11 +6,11 @@
 
         public ResponseErrorJson(IList<string> errors) => Errors = errors;
 
-        public ResponseErrorJson(string errors) 
+        public ResponseErrorJson(string error) 
         {
             Errors =
             [
-                errors
+                error
             ];
         }
     }

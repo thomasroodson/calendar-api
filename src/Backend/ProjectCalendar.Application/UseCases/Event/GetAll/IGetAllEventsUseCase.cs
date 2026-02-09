@@ -2,7 +2,7 @@
 
 namespace ProjectCalendar.Application.UseCases.Event.GetAll
 {
-    public interface IGetAllEventUseCase
+    public interface IGetAllEventsUseCase
     {
         Task<IEnumerable<ResponseEventJson>> Execute();
     }

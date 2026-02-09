@@ -8,9 +8,9 @@ using ProjectCalendar.Infrastructure;
 using ProjectCalendar.Infrastructure.DataAccess;
 using System.Reflection;
 
-var builder = WebApplication.CreateBuilder(args);
-
 MongoDbConfiguration.Configure();
+
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {

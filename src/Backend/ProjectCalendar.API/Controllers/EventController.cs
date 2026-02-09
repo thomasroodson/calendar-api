@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using ProjectCalendar.Application.UseCases.Event.Get;
+using ProjectCalendar.Application.UseCases.Event.GetById;
 using ProjectCalendar.Application.UseCases.Event.GetAll;
 using ProjectCalendar.Application.UseCases.Event.Register;
 using ProjectCalendar.Communication.Requests;
 using ProjectCalendar.Communication.Responses;
+using ProjectCalendar.Exceptions;
+using ProjectCalendar.Application.UseCases.Event.GetByDate;
 
 namespace ProjectCalendar.API.Controllers
 {
@@ -12,16 +14,20 @@ namespace ProjectCalendar.API.Controllers
     public class EventController : ControllerBase
     {
         private readonly IRegisterEventUseCase _registerEventUseCase;
-        private readonly IGetAllEventUseCase _getAllEventUseCase;
+        private readonly IGetAllEventsUseCase _getAllEventUseCase;
         private readonly IGetEventByIdUseCase _getEventByIdUseCase;
+        private readonly IGetEventsByDateUseCase _getEventByDateUseCase;
 
         public EventController(IRegisterEventUseCase registerEventUseCase,
-            IGetAllEventUseCase getAllEventUseCase,
-            IGetEventByIdUseCase getEventByIdUseCase
+            IGetAllEventsUseCase getAllEventUseCase,
+            IGetEventByIdUseCase getEventByIdUseCase,
+            IGetEventsByDateUseCase getEventByDateUseCase
             )
         {
             _registerEventUseCase = registerEventUseCase;
             _getAllEventUseCase = getAllEventUseCase;
+            _getEventByIdUseCase = getEventByIdUseCase;
+            _getEventByDateUseCase = getEventByDateUseCase;
 
         }
 
@@ -45,10 +51,20 @@ namespace ProjectCalendar.API.Controllers
 
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ResponseEventJson), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetEventById(string id)
+        public async Task<IActionResult> GetEventById(
+            [FromRoute]string id)
         {
             var result = await _getEventByIdUseCase.Execute(id);
 
+            return Ok(result);
+        }
+
+        [HttpGet("range")]
+        [ProducesResponseType(typeof(IEnumerable<ResponseEventJson>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetEventsByDate(
+            [FromQuery] RequestGetEventByDateJson request)
+        {
+            var result = _getEventByDateUseCase.Execute(request);
             return Ok(result);
         }
     }

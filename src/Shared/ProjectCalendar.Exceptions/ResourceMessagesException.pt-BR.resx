@@ -135,6 +135,15 @@
   <data name="END_DATE_REQUIRED" xml:space="preserve">
     <value>A data de término é obrigatória</value>
   </data>
+  <data name="ID_MIN_LENGTH" xml:space="preserve">
+    <value>Tamanho do ID inválido.</value>
+  </data>
+  <data name="INVALID_EVENT_DATE_RANGE" xml:space="preserve">
+    <value>A data de início não pode ser maior que a data de término.</value>
+  </data>
+  <data name="INVALID_EVENT_ID" xml:space="preserve">
+    <value>O id do evento é inválido.</value>
+  </data>
   <data name="NOT_FOUND_EVENT" xml:space="preserve">
     <value>Evento não encontrado.</value>
   </data>

@@ -115,6 +115,33 @@ namespace ProjectCalendar.Exceptions {
         }
         
         /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a Invalid ID size..
+        /// </summary>
+        public static string ID_MIN_LENGTH {
+            get {
+                return ResourceManager.GetString("ID_MIN_LENGTH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a The start date cannot be later than the end date..
+        /// </summary>
+        public static string INVALID_EVENT_DATE_RANGE {
+            get {
+                return ResourceManager.GetString("INVALID_EVENT_DATE_RANGE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a The event id format is invalid..
+        /// </summary>
+        public static string INVALID_EVENT_ID {
+            get {
+                return ResourceManager.GetString("INVALID_EVENT_ID", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Consulta uma cadeia de caracteres localizada semelhante a Event not found..
         /// </summary>
         public static string NOT_FOUND_EVENT {

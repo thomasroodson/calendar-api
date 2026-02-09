@@ -4,11 +4,11 @@ using ProjectCalendar.Domain.Interfaces;
 
 namespace ProjectCalendar.Application.UseCases.Event.GetAll
 {
-    public class GetAllEventUseCase : IGetAllEventUseCase
+    public class GetAllEventsUseCase : IGetAllEventsUseCase
     {
         private readonly IEventRepository _repository;
         private readonly IMapper _mapper;
-        public GetAllEventUseCase(IEventRepository repository, IMapper mapper) {
+        public GetAllEventsUseCase(IEventRepository repository, IMapper mapper) {
             _repository = repository;
             _mapper = mapper;
         }

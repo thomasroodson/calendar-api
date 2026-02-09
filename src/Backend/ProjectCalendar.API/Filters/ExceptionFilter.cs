@@ -21,11 +21,19 @@ namespace ProjectCalendar.API.Filters
 
         private static void HandleProjectException(ExceptionContext context)
         {
-            if(context.Exception is ErrorOnValidationException exception)
+            if(context.Exception is ErrorOnValidationException)
             {
+                var exception = context.Exception as ErrorOnValidationException;
+
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                context.Result = new BadRequestObjectResult(new ResponseErrorJson(exception.ErrorMessages));
-            }
+                context.Result = new BadRequestObjectResult(new ResponseErrorJson(exception!.ErrorMessages));
+
+            } else if (context.Exception is ErrorNotFoundEventException)
+            {
+                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                context.Result = new NotFoundObjectResult(new ResponseErrorJson(context.Exception.Message));
+            } 
+
         }
 
         private static void ThrowUnknowException(ExceptionContext context)
