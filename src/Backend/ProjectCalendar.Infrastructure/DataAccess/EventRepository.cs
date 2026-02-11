@@ -1,5 +1,6 @@
 ﻿using MongoDB.Driver;
 using ProjectCalendar.Domain.Entities;
+using ProjectCalendar.Domain.ValueObjects;
 using ProjectCalendar.Domain.Interfaces;
 
 namespace ProjectCalendar.Infrastructure.DataAccess
@@ -31,9 +32,12 @@ namespace ProjectCalendar.Infrastructure.DataAccess
 
         public async Task<IEnumerable<Event>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
         {
+            var startOfDay = startDate.Date;
+            var endOfDay = endDate.Date.AddDays(1);
+
             var filter = Builders<Event>.Filter.And(
-                Builders<Event>.Filter.Gte(e => e.DateRange.StartDate, startDate),
-                Builders<Event>.Filter.Lte(e => e.DateRange.EndDate, endDate)
+                Builders<Event>.Filter.Lte(e => e.DateRange.StartDate, endOfDay),
+                Builders<Event>.Filter.Gte(e => e.DateRange.EndDate, startOfDay)
             );
 
             return await _collection.Find(filter).ToListAsync();

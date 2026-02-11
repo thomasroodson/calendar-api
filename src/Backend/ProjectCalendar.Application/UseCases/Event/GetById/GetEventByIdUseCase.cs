@@ -3,6 +3,7 @@ using MapsterMapper;
 using ProjectCalendar.Communication.Responses;
 using ProjectCalendar.Domain.Interfaces;
 using ProjectCalendar.Exceptions.ExceptionsBase;
+using ProjectCalendar.Application.Common;
 
 namespace ProjectCalendar.Application.UseCases.Event.GetById
 {
@@ -21,22 +22,11 @@ namespace ProjectCalendar.Application.UseCases.Event.GetById
 
         public async Task<ResponseEventJson> Execute(string id)
         {
-            await Validate(id);
+            await _validator.ValidateDomainAsync(id);
 
             var eventById = await _repository.GetByIdAsync(id);
 
             return eventById is null  ? throw new ErrorNotFoundEventException() : _mapper.Map<ResponseEventJson>(eventById);
-        }
-
-        private async Task Validate(string id)
-        {
-            var validationResult = await _validator.ValidateAsync(id);
-
-            if (!validationResult.IsValid)
-            {
-                var errorMessages = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new ErrorOnValidationException(errorMessages);
-            }
         }
     }
 }

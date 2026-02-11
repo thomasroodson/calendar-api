@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MapsterMapper;
+using ProjectCalendar.Application.Common;
 using ProjectCalendar.Communication.Requests;
 using ProjectCalendar.Communication.Responses;
 using ProjectCalendar.Domain.Interfaces;
@@ -12,7 +13,7 @@ namespace ProjectCalendar.Application.UseCases.Event.GetByDate
         private readonly IEventRepository _repository;
         private readonly IMapper _mapper;
         private readonly IValidator<RequestGetEventByDateJson> _validator;
-        public GetEventsByDateUseCase(IEventRepository repository, IMapper mapper, IValidator<RequestGetEventByDateJson> validator) 
+        public GetEventsByDateUseCase(IEventRepository repository, IMapper mapper, IValidator<RequestGetEventByDateJson> validator)
         {
             _repository = repository;
             _mapper = mapper;
@@ -21,23 +22,13 @@ namespace ProjectCalendar.Application.UseCases.Event.GetByDate
 
         public async Task<IEnumerable<ResponseEventJson>> Execute(RequestGetEventByDateJson request)
         {
-            await Validate(request);
+            await _validator.ValidateDomainAsync(request);
 
             var events = await _repository.GetByDateRangeAsync(request.StartDate, request.EndDate);
             var result = _mapper.Map<IEnumerable<ResponseEventJson>>(events);
-            
+
             return result;
         }
 
-        private async Task Validate(RequestGetEventByDateJson request)
-        {
-            var validationResult = await _validator.ValidateAsync(request);
-
-            if (!validationResult.IsValid)
-            {
-                var errorMessages = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new ErrorOnValidationException(errorMessages);
-            }
-        }
     }
 }

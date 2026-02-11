@@ -1,5 +1,6 @@
 using FluentValidation;
 using MapsterMapper;
+using ProjectCalendar.Application.Common;
 using ProjectCalendar.Communication.Requests;
 using ProjectCalendar.Communication.Responses;
 using ProjectCalendar.Domain.Interfaces;
@@ -25,7 +26,7 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
 
         public async Task<ResponseEventJson> Execute(RequestRegisterEventJson request)
         {
-            await Validate(request);
+            await _validator.ValidateDomainAsync(request);
 
             var eventEntity = new Domain.Entities.Event(
                 title: request.Title,
@@ -38,17 +39,6 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
             var createdEvent = await _repository.CreateAsync(eventEntity);
 
             return _mapper.Map<ResponseEventJson>(createdEvent);
-        }
-
-        private async Task Validate(RequestRegisterEventJson request)
-        {
-            var result = await _validator.ValidateAsync(request);
-
-            if (!result.IsValid)
-            {
-                var errorMessages = result.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new ErrorOnValidationException(errorMessages);
-            }
         }
     }
 }

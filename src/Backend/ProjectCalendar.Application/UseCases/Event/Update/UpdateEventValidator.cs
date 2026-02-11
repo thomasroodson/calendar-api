@@ -2,11 +2,11 @@
 using ProjectCalendar.Communication.Requests;
 using ProjectCalendar.Exceptions;
 
-namespace ProjectCalendar.Application.UseCases.Event.Register
+namespace ProjectCalendar.Application.UseCases.Event.Update
 {
-    public class RegisterEventValidator : AbstractValidator<RequestRegisterEventJson>
+    public class UpdateEventValidator : AbstractValidator<RequestUpdateEventJson>
     {
-        public RegisterEventValidator()
+        public UpdateEventValidator()
         {
             RuleFor(x => x.Title)
                 .Cascade(CascadeMode.Stop)
@@ -28,7 +28,7 @@ namespace ProjectCalendar.Application.UseCases.Event.Register
                 .NotEmpty()
                 .WithMessage(ResourceMessagesException.START_DATE_REQUIRED)
                 .LessThan(x => x.EndDate)
-                .WithMessage(ResourceMessagesException.START_DATE_BEFORE_END);
+                .WithMessage(ResourceMessagesException.INVALID_EVENT_DATE_RANGE);
 
             RuleFor(x => x.EndDate)
                 .NotEmpty()
